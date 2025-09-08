@@ -16,17 +16,21 @@ def parse_args() -> argparse.Namespace:
         description="Convert .eml files to a single Markdown document with chapters.",
         epilog="""
 Examples:
-  email2md                           # Process all .eml files in current directory
-  email2md -i /path/to/emails       # Process .eml files from specific directory
+  email2md --all                    # Output both text and images (default)
   email2md --no-img                 # Exclude images from output
-  email2md --no-text               # Only include images in output
-  email2md -d                      # Enable debug output
+  email2md --no-text                # Only include images in output
+  email2md -i /path/to/emails       # Process .eml files from specific directory
+  email2md -d                       # Enable debug output
         """,
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--all", action="store_true", help="Include both text and images in the Markdown (default)"
+    )
+    group.add_argument(
         "--no-img", "-ni", action="store_true", help="Exclude attached images from the Markdown"
     )
-    parser.add_argument(
+    group.add_argument(
         "--no-text", "-nt", action="store_true", help="Exclude message text from the Markdown"
     )
     parser.add_argument("--debug", "-d", action="store_true", help="Enable debug output")
@@ -83,18 +87,50 @@ def main():
         logging.error("No email files were successfully processed")
         sys.exit(1)
 
+    # Determine output mode
+    no_text = args.no_text
+    no_images = args.no_img
+    if args.all or (not args.no_text and not args.no_img):
+        no_text = False
+        no_images = False
+
     # Generate markdown
     try:
-        if not args.no_img:
-            images_dir.mkdir(exist_ok=True)
+        if args.all:
+            # Generate all three versions
+            # 1. Normal (text + images)
+            markdown_gen = MarkdownGenerator(images_dir, output_file)
+            for email in sorted(emails, key=lambda x: x[1]):
+                markdown_gen.add_chapter(*email, no_text=False, no_images=False)
+            output_file.write_text(markdown_gen.get_content())
+            logging.info(f"Successfully created: '{output_file}'")
 
-        markdown_gen = MarkdownGenerator(images_dir, output_file)
-        for email in sorted(emails, key=lambda x: x[1]):
-            markdown_gen.add_chapter(*email, no_text=args.no_text, no_images=args.no_img)
+            # 2. Text only (no images)
+            txt_only_file = output_file.with_name(f"{output_file.stem}_txt{output_file.suffix}")
+            markdown_gen_txt = MarkdownGenerator(images_dir, txt_only_file)
+            for email in sorted(emails, key=lambda x: x[1]):
+                markdown_gen_txt.add_chapter(*email, no_text=False, no_images=True)
+            txt_only_file.write_text(markdown_gen_txt.get_content())
+            logging.info(f"Successfully created: '{txt_only_file}'")
 
-        # Write output
-        output_file.write_text(markdown_gen.get_content())
-        logging.info(f"Successfully created: '{output_file}'")
+            # 3. Images only (no text)
+            img_only_file = output_file.with_name(f"{output_file.stem}_img{output_file.suffix}")
+            markdown_gen_img = MarkdownGenerator(images_dir, img_only_file)
+            for email in sorted(emails, key=lambda x: x[1]):
+                markdown_gen_img.add_chapter(*email, no_text=True, no_images=False)
+            img_only_file.write_text(markdown_gen_img.get_content())
+            logging.info(f"Successfully created: '{img_only_file}'")
+        else:
+            if not no_images:
+                images_dir.mkdir(exist_ok=True)
+
+            markdown_gen = MarkdownGenerator(images_dir, output_file)
+            for email in sorted(emails, key=lambda x: x[1]):
+                markdown_gen.add_chapter(*email, no_text=no_text, no_images=no_images)
+
+            # Write output
+            output_file.write_text(markdown_gen.get_content())
+            logging.info(f"Successfully created: '{output_file}'")
 
         # Print processing summary
         processor.print_summary()

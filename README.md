@@ -56,20 +56,20 @@ pip install -e ".[dev]"
 ## Usage
 
 ```bash
-# Basic usage (processes .eml files in current directory)
-email2md
+# Basic usage (outputs normal markdown with text and images)
+email2md --all
+
+# Only images (no text)
+email2md --no-text
+
+# Only text (no images)
+email2md --no-img
 
 # Specify input directory
 email2md -i /path/to/emails
 
 # Specify output file
 email2md -o output.md
-
-# Exclude images
-email2md --no-img
-
-# Exclude text
-email2md --no-text
 
 # Enable debug output
 email2md -d
@@ -99,6 +99,7 @@ nox -s coverage
 ## Getting Email Files
 
 ### From Thunderbird
+
 1. Search the emails in Thunderbird
 2. Select the mails you want to convert
 3. Right-click and select 'Save As'
