@@ -3,7 +3,7 @@ name = "email2md"
 version = "0.1.0"
 description = "Convert .eml files to a single Markdown document with chapters"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "Christian Ditscher", email = "chris@ditscher.me"},
 ]
 dependencies = [
     "pytz>=2023.3",
@@ -12,7 +12,7 @@ requires-python = ">=3.8"
 
 [project.optional-dependencies]
 dev = [
-    "uv==0.5.29",
+    "uv>=0.5.29",
     "nox>=2023.4.22",
     "ruff>=0.1.6",
     "pytest>=7.4.3",
@@ -63,6 +63,3 @@ exclude_lines = [
 python = ["3.8", "3.9", "3.10", "3.11"]
 venv_backend = "uv"
 reuse_existing_virtualenvs = true
-
-[tool.uv]
-required-version = "0.5.29"

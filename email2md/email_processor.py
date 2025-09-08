@@ -72,8 +72,8 @@ class EmailProcessor:
             return "\n\n".join(filter(None, html_text))
         return ""
 
-    def process_email(self, email_path: Path) -> Tuple[str, datetime, str, List[Tuple[str, bytes]]]:
-        """Process a single email file and extract its content."""
+    def process_email(self, email_path: Path, images_base_dir: Path = Path("images")) -> Tuple[str, datetime, str, List[Path]]:
+        """Process a single email file and extract its content. Saves images to dated folder."""
         logging.debug(f"Processing file: '{email_path}'")
 
         with email_path.open("rb") as f:
@@ -115,23 +115,41 @@ class EmailProcessor:
         else:
             body = clean_text(EmailProcessor.get_text_from_part(msg))
 
+        # Save images to dated folder
+        saved_image_paths = []
+        if images:
+            saved_image_paths = self.save_images(images, date, images_base_dir)
+
         # Log a concise summary
-        logging.info(f"""Processed '{email_path.name}':
-    {date} -- {subject}
-     -> {len(images)} images, {len(body)}""")
+        logging.info(f"""Processed '{email_path.name}':\n    {date.strftime(DATE_FORMAT_FILENAME)} -- {subject}\n     -> {len(saved_image_paths)} images, {len(body)}""")
 
         # Track statistics
         if not body:
             logging.warning(f"No message text found in file: '{email_path}'")
             self.stats.no_text_files.append(email_path)
-        if not images:
+        if not saved_image_paths:
             logging.warning(f"No images found in file: '{email_path}'")
             self.stats.no_images_files.append(email_path)
-        if not body and not images:
+        if not body and not saved_image_paths:
             logging.error(f"No content found in file: '{email_path}'")
             self.stats.no_content_files.append(email_path)
 
-        return subject, date, body, images
+        return subject, date, body, saved_image_paths
+
+    def save_images(self, images: List[Tuple[str, bytes]], date: datetime, base_dir: Path = None) -> List[Path]:
+        """Save images to a folder named after the sent date (date only, no time). Returns list of saved file paths."""
+        from .config import IMAGES_DIR_NAME, DATE_KEY_FORMAT
+        if base_dir is None:
+            base_dir = Path(IMAGES_DIR_NAME)
+        date_folder = base_dir / date.strftime(DATE_KEY_FORMAT)
+        date_folder.mkdir(parents=True, exist_ok=True)
+        saved_files = []
+        for img_filename, img_data in images:
+            img_path = date_folder / img_filename
+            with img_path.open("wb") as img_file:
+                img_file.write(img_data)
+            saved_files.append(img_path)
+        return saved_files
 
     def print_summary(self):
         """Print summary of processed emails."""

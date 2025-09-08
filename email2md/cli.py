@@ -5,7 +5,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from email2md.config import DEFAULT_INPUT_DIR, DEFAULT_OUTPUT_FILE
+from email2md.config import DEFAULT_INPUT_DIR, DEFAULT_OUTPUT_FILE, IMAGES_DIR_NAME
 from email2md.email_processor import EmailProcessor
 from email2md.markdown_generator import MarkdownGenerator
 
@@ -55,7 +55,12 @@ def main():
 
     input_dir = Path(args.input_dir)
     output_file = Path(args.output_file)
-    images_dir = output_file.parent / "images"
+
+    # Ensure output directory exists
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Use IMAGES_DIR_NAME for the images directory
+    images_dir = output_file.parent / IMAGES_DIR_NAME
 
     if not input_dir.exists():
         logging.error(f"Input directory does not exist: '{input_dir}'")
@@ -68,7 +73,7 @@ def main():
 
     for eml_path in input_dir.glob("*.eml"):
         try:
-            result = processor.process_email(eml_path)
+            result = processor.process_email(eml_path, images_dir)
             emails.append(result)
         except Exception as e:
             logging.error(f"Failed to process '{eml_path}': {e}")
@@ -83,7 +88,7 @@ def main():
         if not args.no_img:
             images_dir.mkdir(exist_ok=True)
 
-        markdown_gen = MarkdownGenerator(images_dir)
+        markdown_gen = MarkdownGenerator(images_dir, output_file)
         for email in sorted(emails, key=lambda x: x[1]):
             markdown_gen.add_chapter(*email, no_text=args.no_text, no_images=args.no_img)
 

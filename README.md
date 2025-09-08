@@ -2,6 +2,15 @@
 
 Convert email files (.eml) into a single chronologically ordered Markdown document. Perfect for creating diaries or journals from email collections.
 
+## What does this tool do?
+
+- Processes multiple .eml files and extracts both text and image content from each email
+- Saves images in dated subfolders (e.g. `.images/2025-09-08/filename.jpg`) for easy organization
+- Generates a single Markdown file with all emails organized by date, including references to images so they display in the markdown preview
+- Combines multiple emails from the same day into one chapter
+- Supports both plain text and HTML email content
+- Configurable output: you can exclude text or images if desired
+
 ## Features
 
 - Processes multiple .eml files into a single Markdown document

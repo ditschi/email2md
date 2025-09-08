@@ -4,23 +4,25 @@ from datetime import datetime
 import logging
 from collections import defaultdict
 
-from .config import DOCUMENT_TITLE, DATE_FORMAT_FILENAME, DATE_KEY_FORMAT
+from .config import DOCUMENT_TITLE, DATE_FORMAT_FILENAME, DATE_KEY_FORMAT, IMAGES_DIR_NAME
 
 
 class MarkdownGenerator:
     """Generate Markdown content from processed emails."""
 
-    def __init__(self, images_dir: Path):
+    def __init__(self, images_dir: Path, markdown_file: Path = None):
         self.images_dir = images_dir
+        self.images_rel_path = IMAGES_DIR_NAME
         self.content = [f"# {DOCUMENT_TITLE}\n\n"]
         self.daily_content = defaultdict(list)
+        self.markdown_file = markdown_file
 
     def add_chapter(
         self,
         subject: str,
         date: datetime,
         body: str,
-        images: List[Tuple[str, bytes]],
+        images: List[Path],
         no_text: bool = False,
         no_images: bool = False,
     ) -> None:
@@ -33,14 +35,22 @@ class MarkdownGenerator:
             'images': images if not no_images else []
         })
 
-    def _process_images(self, images: List[Tuple[str, bytes]]) -> List[str]:
-        """Process and save images, returning their markdown references."""
+    def _process_images(self, images: List[Path]) -> List[str]:
+        """Return markdown references for images using IMAGES_DIR_NAME and DATE_KEY_FORMAT from config."""
+        from .config import IMAGES_DIR_NAME
         image_refs = []
-        for img_filename, img_data in images:
-            img_path = self.images_dir / img_filename
-            with img_path.open('wb') as img_file:
-                img_file.write(img_data)
-            image_refs.append(f"![{img_filename}](images/{img_filename})\n\n")
+        for img_path in images:
+            parts = img_path.parts
+            try:
+                idx = parts.index(IMAGES_DIR_NAME)
+                rel_path = Path(*parts[idx:])
+            except ValueError:
+                # fallback: use full relative path from markdown file parent
+                if self.markdown_file:
+                    rel_path = img_path.relative_to(self.markdown_file.parent)
+                else:
+                    rel_path = img_path.relative_to(self.images_dir.parent)
+            image_refs.append(f"![{img_path.name}]({rel_path.as_posix()})\n\n")
         return image_refs
 
     def get_content(self) -> str:
@@ -64,7 +74,8 @@ class MarkdownGenerator:
             if not has_content:
                 continue
 
-            self.content.append(f"## {main_entry['subject']} -- {date_str}\n\n")
+            # Only show date (not time) in chapter heading
+            self.content.append(f"## {main_entry['subject']} -- {main_entry['date'].strftime(DATE_FORMAT_FILENAME)}\n\n")
 
             # Add all text content first, in chronological order
             for entry in day_entries:
